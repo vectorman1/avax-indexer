@@ -1,0 +1,7 @@
+ws:
+  host: wss://api.avax.network/ext/bc/C/ws
+rpc:
+  infura: 
+  host: https://api.avax.network/ext/bc/C/rpc
+db:
+  host: mongodb://0.0.0.0:27017/?directConnection=true
