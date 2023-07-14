@@ -20,7 +20,7 @@ func NewIndexer(client *ethrpc.EthRPC, repo *db.BlocksRepo) *Indexer {
 
 func (i *Indexer) ProcessBlock(hash string) {
 retry:
-	time.Sleep(1)
+	time.Sleep(1 * time.Second)
 	block, err := i.rpc.EthGetBlockByHash(hash, true)
 	if err != nil {
 		if e := new(ethrpc.EthError); errors.As(err, e) {

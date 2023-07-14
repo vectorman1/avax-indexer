@@ -20,26 +20,25 @@ type BlocksRepo struct {
 }
 
 func NewBlocksRepo(db *mongo.Database) (*BlocksRepo, error) {
-	slog.Info("initializing blocks collection indexes")
-
 	colls, err := db.ListCollectionNames(context.Background(), bson.M{})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list collection names")
 	}
 
 	if !slices.Contains(colls, blocksCollection) {
+		slog.Info("creating blocks capped collection")
 		// create capped blocks collection
 		opts := options.CreateCollection()
 		opts.SetCapped(true)
 		opts.SetMaxDocuments(blocksRange)
 		opts.SetSizeInBytes(avgBlockSizeBytes * blocksRange)
-
 		if err := db.CreateCollection(context.Background(), blocksCollection, opts); err != nil {
 			slog.Error("failed to create capped blocks collection", "error", err)
 			return nil, errors.Wrap(err, "failed to create capped blocks collection")
 		}
 
 		// create indexes
+		slog.Info("creating indexes")
 		if _, err := db.Collection(blocksCollection).Indexes().CreateMany(context.Background(), []mongo.IndexModel{
 			{
 				Keys: bson.D{{
@@ -125,4 +124,44 @@ func (r *BlocksRepo) UpsertMany(ctx context.Context, blocks []*ethrpc.Block) err
 	}
 
 	return nil
+}
+
+func (r *BlocksRepo) LastHead(ctx context.Context) (int, error) {
+	agg := []bson.M{
+		{
+			"$sort": bson.M{
+				"number": -1,
+			},
+		},
+		{
+			"$limit": 1,
+		},
+		{
+			"$project": bson.M{
+				"number": 1,
+			},
+		},
+	}
+
+	cur, err := r.db.Collection(blocksCollection).
+		Aggregate(ctx, agg)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to aggregate latest block number")
+	}
+	defer cur.Close(ctx)
+
+	var res struct {
+		Number int `bson:"number"`
+	}
+	if !cur.Next(ctx) {
+		return 0, nil
+	}
+	if err := cur.Decode(&res); err != nil {
+		return 0, errors.Wrap(err, "failed to decode latest block number")
+	}
+	if cur.Err() != nil {
+		return 0, errors.Wrap(cur.Err(), "failed to iterate latest block number")
+	}
+	
+	return res.Number, nil
 }

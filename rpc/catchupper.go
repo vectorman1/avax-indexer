@@ -49,22 +49,29 @@ func (c *CatchUpper) CatchUp() error {
 		return errors.Wrap(err, "failed to get current block number")
 	}
 
-	req, err := c.prepareRequestForPreviousBlocks(currBlock)
+	storedHead, err := c.repo.LastHead(context.Background())
+	if err != nil {
+		return errors.Wrap(err, "failed to get last head")
+	}
+
+	if currBlock == storedHead {
+		return nil
+	}
+
+	req, err := c.prepareRequestForPreviousBlocks(currBlock, storedHead)
 	if err != nil {
 		return errors.Wrap(err, "failed to prepare request")
 	}
-	slog.Info("prepared request for catching up with blocks", "count", blockRange)
 
-	slog.Info("fetching blocks", "count", blockRange)
-	response, err := c.http.Do(req)
+	rs, err := c.http.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "failed to send request")
 	}
-	defer response.Body.Close()
+	defer rs.Body.Close()
 
-	slog.Info("decoding blocks", "count", blockRange)
+	slog.Info("decoding blocks")
 	var res []*model.Params[third_party.ProxyBlockWithTransactions]
-	if err := json.NewDecoder(response.Body).Decode(&res); err != nil {
+	if err := json.NewDecoder(rs.Body).Decode(&res); err != nil {
 		if err == io.EOF {
 			return nil
 		}
@@ -82,19 +89,35 @@ func (c *CatchUpper) CatchUp() error {
 		return errors.Wrap(err, "failed to upsert catching up blocks")
 	}
 
+	slog.Info("checking if we need to continue catching up")
+	latestHead, err := c.chainRpc.EthBlockNumber()
+	if err != nil {
+		return errors.Wrap(err, "failed to get latest head")
+	}
+
+	if latestHead > currBlock {
+		c.CatchUp()
+	}
+
 	return nil
 }
 
-func (c *CatchUpper) prepareRequestForPreviousBlocks(currBlock int) (*http.Request, error) {
-	reqs := make([]Req, blockRange)
-	for i := 0; i < blockRange; i++ {
+func (c *CatchUpper) prepareRequestForPreviousBlocks(currHead int, storedHead int) (*http.Request, error) {
+	blocksToFetch := blockRange
+	if storedHead != 0 {
+		blocksToFetch = currHead - storedHead
+	}
+
+	blockNum := currHead
+	reqs := make([]Req, blocksToFetch)
+	for i := 0; i < blocksToFetch; i++ {
 		reqs[i] = Req{
 			Method:  "eth_getBlockByNumber",
-			Params:  []interface{}{fmt.Sprintf("0x%x", currBlock), true},
+			Params:  []interface{}{fmt.Sprintf("0x%x", blockNum), true},
 			Id:      i,
 			Jsonrpc: "2.0",
 		}
-		currBlock--
+		blockNum--
 	}
 
 	b, err := json.Marshal(reqs)
@@ -108,5 +131,6 @@ func (c *CatchUpper) prepareRequestForPreviousBlocks(currBlock int) (*http.Reque
 	}
 	req.Header.Set("Content-Type", "application/json")
 
+	slog.Info("prepared request for blocks", "count", blocksToFetch, "from", blockNum, "to", currHead)
 	return req, nil
 }

@@ -47,17 +47,14 @@ func main() {
 	catchUpper := rpc.NewCatchUpper(infuraClient, chainRpc, repo)
 	indexer := rpc.NewIndexer(chainRpc, repo)
 
-	c := ws.NewListener(wsHost, indexer)
+	if err := catchUpper.CatchUp(); err != nil {
+		slog.Error("failed to catch up with blockchain", slog.StringValue(err.Error()))
+	}
 
+	c := ws.NewListener(wsHost, indexer)
 	if err := c.Subscribe(); err != nil {
 		slog.Error("failed to subscribe to newHeads", "error", err)
 	}
-
-	go func() {
-		if err := catchUpper.CatchUp(); err != nil {
-			slog.Error("failed to catch up with blockchain", "error", err)
-		}
-	}()
 
 	for {
 		select {

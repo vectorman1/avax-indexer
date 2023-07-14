@@ -7,8 +7,7 @@ type WsResponse[T any] struct {
 }
 
 type Params[T any] struct {
-	Subscription string `json:"subscription"`
-	Result       T      `json:"result"`
+	Result T `json:"result"`
 }
 
 type NewHead struct {
