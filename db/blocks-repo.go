@@ -76,6 +76,26 @@ func NewBlocksRepo(db *mongo.Database) (*BlocksRepo, error) {
 					},
 				},
 			},
+			{
+				Keys: bson.D{
+					{
+						Key:   "transactions.hash",
+						Value: -1,
+					},
+				},
+			},
+			{
+				Keys: bson.D{
+					{
+						Key:   "transaction.block_number",
+						Value: -1,
+					},
+					{
+						Key:   "transaction.index",
+						Value: -1,
+					},
+				},
+			},
 		}); err != nil {
 			return nil, errors.Wrap(err, "failed to create indexes")
 		}
@@ -162,6 +182,6 @@ func (r *BlocksRepo) LastHead(ctx context.Context) (int, error) {
 	if cur.Err() != nil {
 		return 0, errors.Wrap(cur.Err(), "failed to iterate latest block number")
 	}
-	
+
 	return res.Number, nil
 }
