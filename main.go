@@ -1,6 +1,7 @@
 package main
 
 import (
+	"avax-indexer/common"
 	"avax-indexer/db"
 	"avax-indexer/rpc"
 	"avax-indexer/ws"
@@ -32,13 +33,13 @@ func main() {
 		wsHost = defaultWSAvalanche
 	}
 
-	rpcInfura := os.Getenv("AVAX_RPC_INFURA")
+	rpcInfura := common.SecretValue(os.Getenv("AVAX_RPC_INFURA"))
 	if rpcInfura == "" {
 		slog.Error("AVAX_RPC_INFURA env var is required")
 		return
 	}
 
-	dbHost := os.Getenv("MONGODB_URI")
+	dbHost := common.SecretValue(os.Getenv("MONGODB_URI"))
 	if dbHost == "" {
 		slog.Error("MONGODB_URI env var is required")
 		return
@@ -57,7 +58,7 @@ func main() {
 	}
 
 	chainClient := ethrpc.New(rpcHost)
-	infuraClient := ethrpc.New(rpcInfura)
+	infuraClient := ethrpc.New(string(rpcInfura))
 
 	catchUpper := rpc.NewCatchUpper(infuraClient, chainClient, repo)
 	indexer := rpc.NewIndexer(chainClient, repo)

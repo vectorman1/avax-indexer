@@ -1,6 +1,7 @@
 package db
 
 import (
+	"avax-indexer/common"
 	"context"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -9,12 +10,13 @@ import (
 	"time"
 )
 
-func InitMongoConn(host string) (*mongo.Database, error) {
+func InitMongoConn(host common.SecretValue) (*mongo.Database, error) {
 	ctx, c := context.WithTimeout(context.Background(), 10*time.Second)
 	defer c()
 
-	slog.Info("connecting to mongo", "host", host)
-	opts := options.Client().ApplyURI(host)
+	opts := options.Client().ApplyURI(string(host))
+
+	slog.Info("Connecting to mongo", "host", opts.Hosts)
 	client, err := mongo.Connect(ctx, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to connect to mongo")

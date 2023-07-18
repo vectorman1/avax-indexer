@@ -87,11 +87,11 @@ func NewBlocksRepo(db *mongo.Database) (*BlocksRepo, error) {
 			{
 				Keys: bson.D{
 					{
-						Key:   "transaction.block_number",
+						Key:   "transactions.block_number",
 						Value: -1,
 					},
 					{
-						Key:   "transaction.index",
+						Key:   "transactions.transaction_index",
 						Value: -1,
 					},
 				},
