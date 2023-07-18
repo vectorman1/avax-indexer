@@ -16,7 +16,7 @@ func InitMongoConn(host common.SecretValue) (*mongo.Database, error) {
 
 	opts := options.Client().ApplyURI(string(host))
 
-	slog.Info("Connecting to mongo", "host", opts.Hosts)
+	slog.Info("connecting to mongo", "host", opts.Hosts)
 	client, err := mongo.Connect(ctx, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to connect to mongo")
