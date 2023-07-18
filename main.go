@@ -22,18 +22,20 @@ func main() {
 
 	rpcHost := os.Getenv("AVAX_RPC")
 	if rpcHost == "" {
+		slog.Info("AVAX_RPC env var is not set; using default for mainnet", "host", defaultRPCAvalanche)
 		rpcHost = defaultRPCAvalanche
+	}
+
+	wsHost := os.Getenv("AVAX_WS")
+	if wsHost == "" {
+		slog.Info("AVAX_WS env var is not set; using default for mainnet", "host", defaultWSAvalanche)
+		wsHost = defaultWSAvalanche
 	}
 
 	rpcInfura := os.Getenv("AVAX_RPC_INFURA")
 	if rpcInfura == "" {
 		slog.Error("AVAX_RPC_INFURA env var is required")
 		return
-	}
-
-	wsHost := os.Getenv("AVAX_WS")
-	if wsHost == "" {
-		wsHost = defaultWSAvalanche
 	}
 
 	dbHost := os.Getenv("MONGODB_URI")
@@ -54,11 +56,11 @@ func main() {
 		return
 	}
 
-	chainRpc := ethrpc.New(rpcHost)
+	chainClient := ethrpc.New(rpcHost)
 	infuraClient := ethrpc.New(rpcInfura)
 
-	catchUpper := rpc.NewCatchUpper(infuraClient, chainRpc, repo)
-	indexer := rpc.NewIndexer(chainRpc, repo)
+	catchUpper := rpc.NewCatchUpper(infuraClient, chainClient, repo)
+	indexer := rpc.NewIndexer(chainClient, repo)
 
 	if err := catchUpper.CatchUp(); err != nil {
 		slog.Error("failed to catch up with blockchain", slog.StringValue(err.Error()))
