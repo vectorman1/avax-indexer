@@ -2,7 +2,7 @@
 
 ## Overview
 
-This indexer is a tool to index the AVAX blockchain and store the data in a MongoDB database. It stores the last 10000 blocks utilizing the MongoDB Capped Collections.
+This indexer is a tool to index the AVAX blockchain and store the data in a MongoDB database. It stores the last 10000 blocks utilizing MongoDB [Capped Collections](https://www.mongodb.com/docs/manual/core/capped-collections/).
 
 ## Environment Variables
 
