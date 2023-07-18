@@ -5,6 +5,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"golang.org/x/exp/slog"
 	"time"
 )
 
@@ -12,6 +13,7 @@ func InitMongoConn(host string) (*mongo.Database, error) {
 	ctx, c := context.WithTimeout(context.Background(), 10*time.Second)
 	defer c()
 
+	slog.Info("connecting to mongo", "host", host)
 	opts := options.Client().ApplyURI(host)
 	client, err := mongo.Connect(ctx, opts)
 	if err != nil {
