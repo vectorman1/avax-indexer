@@ -28,7 +28,7 @@ func NewListener(host string, indexer *rpc.Indexer) *Listener {
 	if err != nil {
 		slog.Error("error while dialing websocket", "error", err)
 	}
-	slog.Info("connected", "host", host)
+	slog.Info("connected to avax websocket feed", "host", host)
 
 	go func() {
 		defer close(ws.done)
