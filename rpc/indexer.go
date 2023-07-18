@@ -38,10 +38,10 @@ retry:
 		goto retry
 	}
 
+retryInsert:
 	ctx, c := context.WithTimeout(context.Background(), 1*time.Second)
 	defer c()
 
-retryInsert:
 	if err := i.repo.Insert(ctx, block); err != nil {
 		slog.Error("failed to insert block; retrying in 1 sec", "hash", block.Hash, "error", err)
 		time.Sleep(1 * time.Second)
