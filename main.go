@@ -6,28 +6,41 @@ import (
 	"avax-indexer/ws"
 	"context"
 	"github.com/onrik/ethrpc"
-	"github.com/spf13/viper"
 	"golang.org/x/exp/slog"
 	"os"
 	"os/signal"
 )
 
-func init() {
-	viper.SetConfigFile("config.yml")
-	err := viper.ReadInConfig()
-	if err != nil {
-		panic(err)
-	}
-}
+const (
+	defaultRPCAvalanche = "https://api.avax.network/ext/bc/C/rpc"
+	defaultWSAvalanche  = "wss://api.avax.network/ext/bc/C/ws"
+)
 
 func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	rpcHost := viper.GetString("rpc.host")
-	rpcInfura := viper.GetString("rpc.infura")
-	wsHost := viper.GetString("ws.host")
-	dbHost := viper.GetString("db.host")
+	rpcHost := os.Getenv("AVAX_RPC")
+	if rpcHost == "" {
+		rpcHost = defaultRPCAvalanche
+	}
+
+	rpcInfura := os.Getenv("AVAX_RPC_INFURA")
+	if rpcInfura == "" {
+		slog.Error("AVAX_RPC_INFURA env var is required")
+		return
+	}
+
+	wsHost := os.Getenv("AVAX_WS")
+	if wsHost == "" {
+		wsHost = defaultWSAvalanche
+	}
+
+	dbHost := os.Getenv("MONGODB_URI")
+	if dbHost == "" {
+		slog.Error("MONGODB_URI env var is required")
+		return
+	}
 
 	mongoDb, err := db.InitMongoConn(dbHost)
 	if err != nil {
