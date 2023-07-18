@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-const blockRange = 9900
+const maxBlockRange = 9900
 
 type CatchUpper struct {
 	chainRpc  *ethrpc.EthRPC
@@ -63,6 +63,7 @@ func (c *CatchUpper) CatchUp() error {
 		return errors.Wrap(err, "failed to prepare request")
 	}
 
+	slog.Info("sending request for missing blocks")
 	rs, err := c.http.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "failed to send request")
@@ -103,20 +104,23 @@ func (c *CatchUpper) CatchUp() error {
 }
 
 func (c *CatchUpper) prepareRequestForPreviousBlocks(currHead int, storedHead int) (*http.Request, error) {
-	blocksToFetch := blockRange
+	blocksToFetch := maxBlockRange
 	if storedHead != 0 {
-		blocksToFetch = currHead - storedHead
+		missing := currHead - storedHead
+		if missing < maxBlockRange {
+			blocksToFetch = missing
+		}
 	}
 
 	blockNum := currHead
-	reqs := make([]Req, blocksToFetch)
+	reqs := make([]Req, 0, blocksToFetch)
 	for i := 0; i < blocksToFetch; i++ {
-		reqs[i] = Req{
+		reqs = append(reqs, Req{
 			Method:  "eth_getBlockByNumber",
 			Params:  []interface{}{fmt.Sprintf("0x%x", blockNum), true},
 			Id:      i,
 			Jsonrpc: "2.0",
-		}
+		})
 		blockNum--
 	}
 
