@@ -17,6 +17,7 @@ import (
 )
 
 const maxBlockRange = 9900
+const infuraDailyError = `daily request count exceeded, request rate limited`
 
 type CatchUpper struct {
 	chainRpc  *ethrpc.EthRPC
@@ -70,6 +71,22 @@ func (c *CatchUpper) CatchUp() error {
 	}
 	defer rs.Body.Close()
 
+	if rs.StatusCode != http.StatusOK {
+		if rs.StatusCode == http.StatusTooManyRequests {
+			var infErr model.InfuraError
+			if err := json.NewDecoder(rs.Body).Decode(&infErr); err != nil {
+				return errors.Wrap(err, "failed to decode infura error")
+			}
+
+			slog.Warn("got Infura 429; waiting", "backoff_seconds", infErr.Data.Rate.BackoffSeconds)
+			time.Sleep(time.Duration(infErr.Data.Rate.BackoffSeconds) * time.Second)
+
+			return c.CatchUp()
+		}
+
+		return fmt.Errorf("got status code %d", rs.StatusCode)
+	}
+
 	slog.Info("decoding blocks")
 	var res []*model.Params[third_party.ProxyBlockWithTransactions]
 	if err := json.NewDecoder(rs.Body).Decode(&res); err != nil {
@@ -78,7 +95,6 @@ func (c *CatchUpper) CatchUp() error {
 		}
 		return errors.Wrap(err, "failed to decode response body")
 	}
-	slog.Info("received blocks", "count", len(res))
 
 	blocks := make([]*ethrpc.Block, len(res))
 	for i, blk := range res {
@@ -89,6 +105,7 @@ func (c *CatchUpper) CatchUp() error {
 	if err := c.repo.UpsertMany(context.Background(), blocks); err != nil {
 		return errors.Wrap(err, "failed to upsert catching up blocks")
 	}
+	slog.Info("saved blocks", "count", len(blocks))
 
 	slog.Info("checking if we need to continue catching up")
 	latestHead, err := c.chainRpc.EthBlockNumber()
@@ -97,7 +114,8 @@ func (c *CatchUpper) CatchUp() error {
 	}
 
 	if latestHead > currBlock {
-		c.CatchUp()
+		slog.Info("need to continue catching up", "stored_head", currBlock, "latest_head", latestHead)
+		return c.CatchUp()
 	}
 
 	return nil

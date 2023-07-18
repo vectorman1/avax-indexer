@@ -26,7 +26,7 @@ func NewBlocksRepo(db *mongo.Database) (*BlocksRepo, error) {
 	}
 
 	if !slices.Contains(colls, blocksCollection) {
-		slog.Info("creating blocks capped collection")
+		slog.Info("creating blocks capped collection", "cap", blocksRange, "bytes_size", avgBlockSizeBytes*blocksRange)
 		// create capped blocks collection
 		opts := options.CreateCollection()
 		opts.SetCapped(true)
@@ -38,8 +38,7 @@ func NewBlocksRepo(db *mongo.Database) (*BlocksRepo, error) {
 		}
 
 		// create indexes
-		slog.Info("creating indexes")
-		if _, err := db.Collection(blocksCollection).Indexes().CreateMany(context.Background(), []mongo.IndexModel{
+		idx := []mongo.IndexModel{
 			{
 				Keys: bson.D{{
 					Key:   "timestamp",
@@ -96,7 +95,9 @@ func NewBlocksRepo(db *mongo.Database) (*BlocksRepo, error) {
 					},
 				},
 			},
-		}); err != nil {
+		}
+		slog.Info("creating indexes", "count", len(idx))
+		if _, err := db.Collection(blocksCollection).Indexes().CreateMany(context.Background(), idx); err != nil {
 			return nil, errors.Wrap(err, "failed to create indexes")
 		}
 	}

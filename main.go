@@ -64,7 +64,8 @@ func main() {
 	indexer := rpc.NewIndexer(chainClient, repo)
 
 	if err := catchUpper.CatchUp(); err != nil {
-		slog.Error("failed to catch up with blockchain", slog.StringValue(err.Error()))
+		slog.Error("failed to catch up with blockchain", "error", err.Error())
+		os.Exit(1)
 	}
 
 	c := ws.NewListener(wsHost, indexer)
