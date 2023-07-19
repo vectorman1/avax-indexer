@@ -131,7 +131,7 @@ func (c *CatchUpper) prepareRequestForPreviousBlocks(currHead int, storedHead in
 	}
 
 	blockNum := currHead
-	reqs := make([]Req, 0, blocksToFetch)
+	reqs := make([]Req, 0)
 	for i := 0; i < blocksToFetch; i++ {
 		reqs = append(reqs, Req{
 			Method:  "eth_getBlockByNumber",
