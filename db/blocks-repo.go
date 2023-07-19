@@ -41,6 +41,12 @@ func NewBlocksRepo(db *mongo.Database) (*BlocksRepo, error) {
 		idx := []mongo.IndexModel{
 			{
 				Keys: bson.D{{
+					Key:   "number",
+					Value: -1,
+				}},
+			},
+			{
+				Keys: bson.D{{
 					Key:   "timestamp",
 					Value: -1,
 				}},
