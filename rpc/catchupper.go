@@ -16,34 +16,40 @@ import (
 	"time"
 )
 
-const maxBlockRange = 9900
-const infuraDailyError = `daily request count exceeded, request rate limited`
-
+// CatchUpper is a service that catches up missing blocks
 type CatchUpper struct {
 	chainRpc  *ethrpc.EthRPC
 	infuraRpc *ethrpc.EthRPC
 	http      *http.Client
-	repo      *db.BlocksRepo
+	repo      *db.MongoBlocksRepo
+	blocksNum int64
 }
 
+// Req is used for bulk requests to Infura
 type Req struct {
 	Method  string        `json:"method"`
 	Params  []interface{} `json:"params"`
-	Id      int           `json:"id"`
+	Id      int64         `json:"id"`
 	Jsonrpc string        `json:"jsonrpc"`
 }
 
-func NewCatchUpper(infuraRpc *ethrpc.EthRPC, chainRpc *ethrpc.EthRPC, repo *db.BlocksRepo) *CatchUpper {
+// NewCatchUpper initializes a new CatchUpper service
+func NewCatchUpper(infuraRpc *ethrpc.EthRPC, chainRpc *ethrpc.EthRPC, repo *db.MongoBlocksRepo, blocksNum int64) *CatchUpper {
 	return &CatchUpper{
 		chainRpc:  chainRpc,
 		infuraRpc: infuraRpc,
-		repo:      repo,
 		http: &http.Client{
 			Timeout: 120 * time.Second,
 		},
+		repo:      repo,
+		blocksNum: blocksNum,
 	}
 }
 
+// CatchUp brings the stored blocks up to date with the current head
+// It will fetch up to 90%*(10000 or the configured amount) blocks,
+// store them in an ordered fashion and then recursively call itself
+// until the current head is reached
 func (c *CatchUpper) CatchUp() error {
 	currBlock, err := c.chainRpc.EthBlockNumber()
 	if err != nil {
@@ -55,11 +61,11 @@ func (c *CatchUpper) CatchUp() error {
 		return errors.Wrap(err, "failed to get last head")
 	}
 
-	if currBlock == storedHead {
+	if int64(currBlock) == storedHead {
 		return nil
 	}
 
-	req, err := c.prepareRequestForPreviousBlocks(currBlock, storedHead)
+	req, err := c.prepareRequestForPreviousBlocks(int64(currBlock), storedHead)
 	if err != nil {
 		return errors.Wrap(err, "failed to prepare request")
 	}
@@ -121,18 +127,22 @@ func (c *CatchUpper) CatchUp() error {
 	return nil
 }
 
-func (c *CatchUpper) prepareRequestForPreviousBlocks(currHead int, storedHead int) (*http.Request, error) {
-	blocksToFetch := maxBlockRange
+// prepareRequestForPreviousBlocks prepares a request for the previous blocks
+// It will fetch up to 90%*(10000 or the configured amount) blocks
+// If the stored head is 0, it will fetch the max amount of blocks
+// If the stored head is not 0, it will fetch the difference between the current head and the stored head
+func (c *CatchUpper) prepareRequestForPreviousBlocks(currHead int64, storedHead int64) (*http.Request, error) {
+	blocksToFetch := int64(0.9 * float32(c.blocksNum))
 	if storedHead != 0 {
 		missing := currHead - storedHead
-		if missing < maxBlockRange {
+		if missing < blocksToFetch {
 			blocksToFetch = missing
 		}
 	}
 
 	blockNum := currHead
 	reqs := make([]Req, 0)
-	for i := 0; i < blocksToFetch; i++ {
+	for i := int64(0); i < blocksToFetch; i++ {
 		reqs = append(reqs, Req{
 			Method:  "eth_getBlockByNumber",
 			Params:  []interface{}{fmt.Sprintf("0x%x", blockNum), true},

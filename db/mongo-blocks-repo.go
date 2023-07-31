@@ -15,23 +15,28 @@ const blocksCollection = "blocks"
 const blocksRange = 10000
 const avgBlockSizeBytes = 50 * 1000 // 50 kb
 
-type BlocksRepo struct {
+// MongoBlocksRepo is a repository for blocks
+type MongoBlocksRepo struct {
 	db *mongo.Database
 }
 
-func NewBlocksRepo(db *mongo.Database) (*BlocksRepo, error) {
+// NewMongoBlocksRepo initializes a new blocks repository
+// If the blocks collection does not exist, it will be created
+// and indexes will be created
+func NewMongoBlocksRepo(db *mongo.Database, num int64, docSize int64) (*MongoBlocksRepo, error) {
 	colls, err := db.ListCollectionNames(context.Background(), bson.M{})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list collection names")
 	}
 
 	if !slices.Contains(colls, blocksCollection) {
-		slog.Info("creating blocks capped collection", "cap", blocksRange, "bytes_size", avgBlockSizeBytes*blocksRange)
+		maxSize := num * docSize * 1000
+		slog.Info("creating blocks capped collection", "cap", num, "bytes_size", maxSize)
 		// create capped blocks collection
 		opts := options.CreateCollection()
 		opts.SetCapped(true)
-		opts.SetMaxDocuments(blocksRange)
-		opts.SetSizeInBytes(avgBlockSizeBytes * blocksRange)
+		opts.SetMaxDocuments(num)
+		opts.SetSizeInBytes(maxSize)
 		if err := db.CreateCollection(context.Background(), blocksCollection, opts); err != nil {
 			slog.Error("failed to create capped blocks collection", "error", err)
 			return nil, errors.Wrap(err, "failed to create capped blocks collection")
@@ -108,10 +113,11 @@ func NewBlocksRepo(db *mongo.Database) (*BlocksRepo, error) {
 		}
 	}
 
-	return &BlocksRepo{db: db}, nil
+	return &MongoBlocksRepo{db: db}, nil
 }
 
-func (r *BlocksRepo) Insert(ctx context.Context, block *ethrpc.Block) error {
+// Insert inserts a block into the database
+func (r *MongoBlocksRepo) Insert(ctx context.Context, block *ethrpc.Block) error {
 	m := Block{}.FromResponse(block)
 	opts := options.Update().
 		SetUpsert(true)
@@ -126,7 +132,8 @@ func (r *BlocksRepo) Insert(ctx context.Context, block *ethrpc.Block) error {
 	return err
 }
 
-func (r *BlocksRepo) UpsertMany(ctx context.Context, blocks []*ethrpc.Block) error {
+// UpsertMany inserts or updates many blocks into the database
+func (r *MongoBlocksRepo) UpsertMany(ctx context.Context, blocks []*ethrpc.Block) error {
 	models := make([]mongo.WriteModel, 0)
 	for i := len(blocks) - 1; i >= 0; i-- {
 		b := blocks[i]
@@ -153,7 +160,8 @@ func (r *BlocksRepo) UpsertMany(ctx context.Context, blocks []*ethrpc.Block) err
 	return nil
 }
 
-func (r *BlocksRepo) LastHead(ctx context.Context) (int, error) {
+// LastHead returns the last block number in the database
+func (r *MongoBlocksRepo) LastHead(ctx context.Context) (int64, error) {
 	agg := []bson.M{
 		{
 			"$sort": bson.M{
@@ -178,7 +186,7 @@ func (r *BlocksRepo) LastHead(ctx context.Context) (int, error) {
 	defer cur.Close(ctx)
 
 	var res struct {
-		Number int `bson:"number"`
+		Number int64 `bson:"number"`
 	}
 	if !cur.Next(ctx) {
 		return 0, nil

@@ -12,24 +12,35 @@ import (
 	"time"
 )
 
+// Listener is a service that listens to newHeads events
 type Listener struct {
 	indexer *rpc.Indexer
 	sck     *websocket.Conn
 	done    chan struct{}
 }
 
+// NewListener initializes a new Listener service
+// It dials the host and sets up the receiver goroutine
+// For each received message it tries to unmarshal it into a newHead
+// If successful, it starts a new goroutine to process the block
 func NewListener(host string, indexer *rpc.Indexer) *Listener {
+	// Create service
 	ws := &Listener{
 		done:    make(chan struct{}),
 		indexer: indexer,
 	}
 
+	// Dial target ETH ws host
 	c, _, err := websocket.DefaultDialer.Dial(host, nil)
 	if err != nil {
 		slog.Error("error while dialing websocket", "error", err)
 	}
 	slog.Info("connected to avax websocket feed", "host", host)
 
+	// Set connection
+	ws.sck = c
+
+	// Start listener goroutine
 	go func() {
 		defer close(ws.done)
 		for {
@@ -59,6 +70,7 @@ func NewListener(host string, indexer *rpc.Indexer) *Listener {
 			num := new(big.Int)
 			fmt.Sscanf(data.Params.Result.Number, "0x%x", num)
 
+			// Start processing goroutine
 			go ws.indexer.ProcessBlock(bHash)
 			slog.Info("recv", "num", num, "hash", bHash)
 		}
@@ -69,6 +81,7 @@ func NewListener(host string, indexer *rpc.Indexer) *Listener {
 	return ws
 }
 
+// Subscribe sends a subscription request for newHeads to the websocket
 func (ws *Listener) Subscribe() error {
 	slog.Info("subscribing to newHeads")
 	if err := ws.sck.WriteMessage(websocket.TextMessage, []byte(`{"id":1,"jsonrpc":"2.0","method":"eth_subscribe","params":["newHeads"]}`)); err != nil {
@@ -77,10 +90,12 @@ func (ws *Listener) Subscribe() error {
 	return nil
 }
 
+// Done returns a channel that is closed when the websocket connection is closed
 func (ws *Listener) Done() <-chan struct{} {
 	return ws.done
 }
 
+// GraceClose gracefully closes the websocket connection
 func (ws *Listener) GraceClose() error {
 	slog.Info("gracefully closing ws connection")
 

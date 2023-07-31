@@ -9,15 +9,21 @@ import (
 	"time"
 )
 
+// Indexer is a service that processes received blocks and stores them in the database
 type Indexer struct {
 	rpc  *ethrpc.EthRPC
-	repo *db.BlocksRepo
+	repo *db.MongoBlocksRepo
 }
 
-func NewIndexer(client *ethrpc.EthRPC, repo *db.BlocksRepo) *Indexer {
+// NewIndexer initializes a new Indexer service
+func NewIndexer(client *ethrpc.EthRPC, repo *db.MongoBlocksRepo) *Indexer {
 	return &Indexer{rpc: client, repo: repo}
 }
 
+// ProcessBlock fetches a block by hash and stores it in the database
+// Retries fetching the block if it ETH returns an error after 1 second
+// Retries fetching the block if ETH returns an empty block after 1 second
+// Retries inserting the block if the database returns an error after 1 second
 func (i *Indexer) ProcessBlock(hash string) {
 retry:
 	time.Sleep(1 * time.Second)

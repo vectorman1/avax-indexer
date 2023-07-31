@@ -1,5 +1,7 @@
 package third_party
 
+// ProxyTransaction is a proxy for ethrpc.Transaction
+// Sourced from github.com/onrik/ethrpc
 type ProxyTransaction struct {
 	Hash             string  `json:"hash"`
 	Nonce            hexInt  `json:"nonce"`

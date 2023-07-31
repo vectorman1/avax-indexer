@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+// InitMongoConn initializes a connection to MongoDB
+// Ping is called to ensure the connection is valid
 func InitMongoConn(host common.SecretValue) (*mongo.Database, error) {
 	ctx, c := context.WithTimeout(context.Background(), 10*time.Second)
 	defer c()

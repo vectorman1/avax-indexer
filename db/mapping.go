@@ -2,6 +2,7 @@ package db
 
 import "github.com/onrik/ethrpc"
 
+// FromResponse maps an ethrpc.Block to a domain Block
 func (Block) FromResponse(block *ethrpc.Block) *Block {
 	mapTx := func(tx []ethrpc.Transaction) []Transaction {
 		if tx == nil {
@@ -36,6 +37,7 @@ func (Block) FromResponse(block *ethrpc.Block) *Block {
 	}
 }
 
+// FromResponse maps an ethrpc.Transaction to a domain Transaction
 func (Transaction) FromResponse(tx *ethrpc.Transaction) *Transaction {
 	return &Transaction{
 		Hash:             tx.Hash,

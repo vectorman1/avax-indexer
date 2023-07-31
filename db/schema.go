@@ -1,5 +1,6 @@
 package db
 
+// Block represents a block in the blockchain, annotated for MongoDB
 type Block struct {
 	Number           int           `bson:"number"`
 	Hash             string        `bson:"hash"`
@@ -21,6 +22,7 @@ type Block struct {
 	Transactions     []Transaction `bson:"transactions"`
 }
 
+// Transaction represents a transaction in the blockchain, annotated for MongoDB
 type Transaction struct {
 	Hash             string `bson:"hash"`
 	Nonce            int    `bson:"nonce"`

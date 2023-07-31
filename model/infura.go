@@ -1,5 +1,6 @@
 package model
 
+// InfuraError represents an error returned by Infura
 type InfuraError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`

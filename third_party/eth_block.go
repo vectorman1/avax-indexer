@@ -7,6 +7,8 @@ import (
 	"unsafe"
 )
 
+// ProxyBlockWithTransactions is a proxy for ethrpc.Block
+// Sourced from github.com/onrik/ethrpc
 type ProxyBlockWithTransactions struct {
 	Number           hexInt             `json:"number"`
 	Hash             string             `json:"hash"`
@@ -28,12 +30,18 @@ type ProxyBlockWithTransactions struct {
 	Transactions     []ProxyTransaction `json:"transactions"`
 }
 
+// ToBlock converts a ProxyBlockWithTransactions to an ethrpc.Block
+// Sourced from github.com/onrik/ethrpc
 func (proxy *ProxyBlockWithTransactions) ToBlock() ethrpc.Block {
 	return *(*ethrpc.Block)(unsafe.Pointer(proxy))
 }
 
+// hexInt is a proxy for ethrpc.Block Number
+// Sourced from github.com/onrik/ethrpc
 type hexInt int
 
+// UnmarshalJSON implements the json.Marshaler interface.
+// Sourced from github.com/onrik/ethrpc
 func (i *hexInt) UnmarshalJSON(data []byte) error {
 	result, err := ParseInt(string(bytes.Trim(data, `"`)))
 	*i = hexInt(result)
@@ -41,8 +49,12 @@ func (i *hexInt) UnmarshalJSON(data []byte) error {
 	return err
 }
 
+// hexBig is a proxy for ethrpc.Block Difficulty and TotalDifficulty
+// Sourced from github.com/onrik/ethrpc
 type hexBig big.Int
 
+// UnmarshalJSON implements the json.Unmarshaler interface.
+// Sourced from github.com/onrik/ethrpc
 func (i *hexBig) UnmarshalJSON(data []byte) error {
 	result, err := ParseBigInt(string(bytes.Trim(data, `"`)))
 	*i = hexBig(result)
