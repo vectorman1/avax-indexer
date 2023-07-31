@@ -76,8 +76,6 @@ func NewListener(host string, indexer *rpc.Indexer) *Listener {
 		}
 	}()
 
-	ws.sck = c
-
 	return ws
 }
 
